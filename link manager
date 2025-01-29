@@ -1,0 +1,47 @@
+```dataviewjs
+// Retrieve all pages that have tags starting with #link
+let linkPages = dv.pages("#link");
+
+// Function to recursively organize pages by tag hierarchy
+function insertIntoHierarchy(hierarchy, tagPath, page) {
+    let parts = tagPath.split("/");
+    let currentLevel = hierarchy;
+
+    for (let i = 1; i < parts.length; i++) { // Start from 1 to skip 'link'
+        let part = parts[i].replace(/_/g, " "); // Convert underscores to spaces
+        if (!currentLevel[part]) {
+            currentLevel[part] = { __pages: [] };
+        }
+        currentLevel = currentLevel[part];
+    }
+    currentLevel.__pages.push(page);
+}
+
+// Build the hierarchical structure
+let tagHierarchy = {};
+linkPages.forEach(page => {
+    let linkTag = page.tags.find(tag => tag.startsWith("link/"));
+    if (linkTag && page.url) {
+        insertIntoHierarchy(tagHierarchy, linkTag, page);
+    }
+});
+
+// Recursive function to render the hierarchy
+function renderHierarchy(hierarchy, level = 2) {
+    for (let key in hierarchy) {
+        if (key === "__pages") {
+            hierarchy[key].forEach(page => {
+                let fileLink = dv.fileLink(page.file.path);
+                dv.paragraph(`${fileLink} - [URL](${page.url})`);
+            });
+        } else {
+            let formattedKey = key.replace(/_/g, " "); // Convert underscores to spaces
+            dv.header(level, formattedKey.charAt(0).toUpperCase() + formattedKey.slice(1));
+            renderHierarchy(hierarchy[key], level + 1);
+        }
+    }
+}
+
+// Render the hierarchy
+renderHierarchy(tagHierarchy);
+```
